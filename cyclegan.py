@@ -35,7 +35,7 @@ class Cyclegan():
         def generator_loss(real, generator, discriminator):
             fake = generator(real)
             pred_fake = discriminator(fake.detach())
-            loss = self.criterion_gan(pred_fake, True)
+            loss = self.criterion_gan(pred_fake, torch.tensor(1.0).expand_as(pred_fake))
             return loss
 
         def cycle_loss(real, generator1, generator2):
@@ -61,10 +61,10 @@ class Cyclegan():
         def optimize(real, generator, discriminator):
             fake = generator(real)
             pred_fake = discriminator(fake.detach())
-            loss_fake = self.criterion_gan(pred_fake, False)
+            loss_fake = self.criterion_gan(pred_fake, torch.tensor(0.0).expand_as(pred_fake))
 
             pred_real = discriminator(real)
-            loss_real = self.criterion_gan(pred_real, True)            
+            loss_real = self.criterion_gan(pred_real, torch.tensor(1.0).expand_as(pred_real))            
 
             loss_D = loss_fake + loss_real
             loss_D.backward()
