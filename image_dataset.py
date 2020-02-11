@@ -11,8 +11,10 @@ IMG_EXTENSIONS = [
     '.tif', '.TIF', '.tiff', '.TIFF',
 ]
 
+
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
+
 
 def make_dataset(dir, max_dataset_size=float("inf")):
     images = []
@@ -24,6 +26,7 @@ def make_dataset(dir, max_dataset_size=float("inf")):
                 path = os.path.join(root, fname)
                 images.append(path)
     return images[:min(max_dataset_size, len(images))]
+
 
 def get_transform():
     transform_list = [
@@ -47,7 +50,8 @@ class ImageDataset(data.Dataset):
         self.transform = get_transform()
 
     def __getitem__(self, index):
-        A_path = self.A_paths[index % self.A_size]  # make sure index is within then range
+        # make sure index is within then range
+        A_path = self.A_paths[index % self.A_size]
         index_B = random.randint(0, self.B_size - 1)
         B_path = self.B_paths[index_B]
         A_img = Image.open(A_path).convert('RGB')
@@ -60,6 +64,7 @@ class ImageDataset(data.Dataset):
 
     def __len__(self):
         return max(self.A_size, self.B_size)
+
 
 if __name__ == '__main__':
     dataset = ImageDataset('./dataset/bart2lisa')
