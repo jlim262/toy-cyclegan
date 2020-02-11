@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import itertools
 
+from collections import OrderedDict
 from networks import Generator, Discriminator
 
 class Cyclegan():
@@ -19,6 +20,15 @@ class Cyclegan():
         self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()), lr=0.2, betas=(0.5, 0.999))
         self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=0.2, betas=(0.5, 0.999))
         self.optimizers = [self.optimizer_G, self.optimizer_D]
+
+        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'D_B', 'G_B', 'cycle_B']
+
+    def get_current_losses(self):        
+        errors_ret = OrderedDict()
+        for name in self.loss_names:
+            if isinstance(name, str):
+                errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
+        return errors_ret        
 
     def set_requires_grad(self, nets, requires_grad=False):
         if not isinstance(nets, list):
@@ -44,13 +54,13 @@ class Cyclegan():
             loss = self.criterion_cycle(reconstructed, real)
             return loss
 
-        loss_G_A = generator_loss(real_A, self.netG_A, self.netD_A)
-        loss_G_B = generator_loss(real_B, self.netG_B, self.netD_B)
-        loss_cycle_A = cycle_loss(real_A, self.netG_A, self.netG_B)
-        loss_cycle_B = cycle_loss(real_B, self.netG_B, self.netG_A)
+        self.loss_G_A = generator_loss(real_A, self.netG_A, self.netD_A)
+        self.loss_G_B = generator_loss(real_B, self.netG_B, self.netD_B)
+        self.loss_cycle_A = cycle_loss(real_A, self.netG_A, self.netG_B)
+        self.loss_cycle_B = cycle_loss(real_B, self.netG_B, self.netG_A)
         
-        loss_G = loss_G_A + loss_G_B + loss_cycle_A + loss_cycle_B
-        loss_G.backward()
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B
+        self.loss_G.backward()
         
         self.optimizer_G.step()
 
@@ -58,7 +68,7 @@ class Cyclegan():
         self.set_requires_grad([self.netD_A, self.netD_B], True)
         self.optimizer_D.zero_grad()
 
-        def optimize(real, generator, discriminator):
+        def discriminator_loss(real, generator, discriminator):
             fake = generator(real)
             pred_fake = discriminator(fake.detach())
             loss_fake = self.criterion_gan(pred_fake, torch.tensor(0.0).expand_as(pred_fake))
@@ -66,14 +76,16 @@ class Cyclegan():
             pred_real = discriminator(real)
             loss_real = self.criterion_gan(pred_real, torch.tensor(1.0).expand_as(pred_real))            
 
-            loss_D = loss_fake + loss_real
-            loss_D.backward()
+            loss = loss_fake + loss_real
+            return loss            
 
         # optimize netD_A
-        optimize(real_B, self.netG_A, self.netD_A)
+        self.loss_D_A = discriminator_loss(real_B, self.netG_A, self.netD_A)
+        self.loss_D_A.backward()
 
         # optimize netD_B
-        optimize(real_A, self.netG_B, self.netD_B)
+        self.loss_D_B = discriminator_loss(real_A, self.netG_B, self.netD_B)
+        self.loss_D_B.backward()
 
         self.optimizer_D.step()  
 

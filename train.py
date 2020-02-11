@@ -11,6 +11,5 @@ if __name__ == '__main__':
 
     for d in dataloader:
         model.optimize_parameters(d['A'], d['B'])
-        
     
-        
+    print(dict(model.get_current_losses()))
