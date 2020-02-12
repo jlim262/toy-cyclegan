@@ -100,3 +100,6 @@ class Cyclegan():
     def optimize_parameters(self, real_A, real_B):
         self.__optimize_G(real_A, real_B)
         self.__optimize_D(real_A, real_B)
+
+    def forward(self, real):
+        return self.netG_A(real)
