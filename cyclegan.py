@@ -19,9 +19,9 @@ class Cyclegan():
         self.criterion_idt = nn.L1Loss()
 
         self.optimizer_G = torch.optim.Adam(itertools.chain(
-            self.netG_A.parameters(), self.netG_B.parameters()), lr=0.2, betas=(0.5, 0.999))
+            self.netG_A.parameters(), self.netG_B.parameters()), lr=0.0002, betas=(0.5, 0.999))
         self.optimizer_D = torch.optim.Adam(itertools.chain(
-            self.netD_A.parameters(), self.netD_B.parameters()), lr=0.2, betas=(0.5, 0.999))
+            self.netD_A.parameters(), self.netD_B.parameters()), lr=0.0002, betas=(0.5, 0.999))
         self.optimizers = [self.optimizer_G, self.optimizer_D]
 
         self.loss_names = ['D_A', 'G_A', 'cycle_A', 'D_B', 'G_B', 'cycle_B']
