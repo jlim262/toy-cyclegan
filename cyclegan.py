@@ -3,8 +3,11 @@ import torch
 import torch.nn as nn
 import itertools
 
+from torch.nn import init
 from collections import OrderedDict
 from networks import Generator, Discriminator
+
+
 
 
 class Cyclegan():
@@ -24,11 +27,11 @@ class Cyclegan():
 
     def __init__(self, device):
         self.device = device
-        self.netG_A = Generator(3).to(self.device)
-        self.netG_B = Generator(3).to(self.device)
-        self.netD_A = Discriminator(3).to(self.device)
-        self.netD_B = Discriminator(3).to(self.device)
-
+        self.netG_A = self.__init_weights(Generator(3).to(self.device))
+        self.netG_B = self.__init_weights(Generator(3).to(self.device))
+        self.netD_A = self.__init_weights(Discriminator(3).to(self.device))
+        self.netD_B = self.__init_weights(Discriminator(3).to(self.device))
+        
         self.criterion_gan = nn.MSELoss()
         self.criterion_cycle = nn.L1Loss()
         self.criterion_idt = nn.L1Loss()
@@ -57,6 +60,20 @@ class Cyclegan():
                 for param in net.parameters():
                     param.requires_grad = requires_grad
 
+    def __init_weights(self, net, init_gain=0.02):
+        def init_func(m):
+            classname = m.__class__.__name__
+            if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
+                init.normal_(m.weight.data, 0.0, init_gain)
+                if hasattr(m, 'bias') and m.bias is not None:
+                    init.constant_(m.bias.data, 0.0)
+            elif classname.find('BatchNorm2d') != -1:  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+                init.normal_(m.weight.data, 1.0, init_gain)
+                init.constant_(m.bias.data, 0.0)
+
+        net.apply(init_func)
+        return net
+
     def __optimize_G(self, real_A, real_B):
         self.set_requires_grad([self.netD_A, self.netD_B], False)
         self.optimizer_G.zero_grad()
@@ -76,7 +93,7 @@ class Cyclegan():
             return loss
 
         def identity_loss(real_source, target_generator):
-            lambda_idt = 0.1
+            lambda_idt = 0.5
             fake_target = target_generator(real_source)
             loss = self.criterion_idt(fake_target, real_source) * 10 * lambda_idt
             return loss
@@ -111,7 +128,7 @@ class Cyclegan():
             loss_real = self.criterion_gan(
                 prediction_of_real_target, torch.tensor(1.0).to(self.device).float().expand_as(prediction_of_real_target))
 
-            loss = loss_fake + loss_real
+            loss = (loss_fake + loss_real) * 0.5
             return loss
 
         # optimize netD_A
