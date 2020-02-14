@@ -32,7 +32,7 @@ def get_transform():
     transform_list = [
         transforms.Resize([286, 286], Image.BICUBIC),
         transforms.RandomCrop(256),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
 

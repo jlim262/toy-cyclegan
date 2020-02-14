@@ -8,11 +8,26 @@ from networks import Generator, Discriminator
 
 
 class Cyclegan():
-    def __init__(self):
-        self.netG_A = Generator(3)
-        self.netG_B = Generator(3)
-        self.netD_A = Discriminator(3)
-        self.netD_B = Discriminator(3)
+    """
+    This class defines the cyclegan model, loss functions and optimizers.
+    A is the source domain and B is the target domain. 
+
+    Generators:
+        self.netG_A: generates fake_B by self.netG_A(real_A)
+        self.netG_B: generates fake_A by self.netG_B(real_B)
+
+    Descriminators:
+        self.netD_A: discriminates between fake_B and real_B
+        self.netD_B: discriminates between fake_A and real_A
+
+    """
+
+    def __init__(self, device):
+        self.device = device
+        self.netG_A = Generator(3).to(self.device)
+        self.netG_B = Generator(3).to(self.device)
+        self.netD_A = Discriminator(3).to(self.device)
+        self.netD_B = Discriminator(3).to(self.device)
 
         self.criterion_gan = nn.MSELoss()
         self.criterion_cycle = nn.L1Loss()
@@ -46,26 +61,35 @@ class Cyclegan():
         self.set_requires_grad([self.netD_A, self.netD_B], False)
         self.optimizer_G.zero_grad()
 
-        def generator_loss(real, generator, discriminator):
-            fake = generator(real)
-            pred_fake = discriminator(fake.detach())
+        def generator_loss(real_source, target_generator, target_discriminator):
+            # generator should generate a fake image which can fool discriminator
+            fake_target = target_generator(real_source)
+            prediction_of_fake_target = target_discriminator(fake_target)
             loss = self.criterion_gan(
-                pred_fake, torch.tensor(1.0).expand_as(pred_fake))
+                prediction_of_fake_target, torch.tensor(1.0).to(self.device).float().expand_as(prediction_of_fake_target))
             return loss
 
-        def cycle_loss(real, generator1, generator2):
-            fake = generator1(real)
-            reconstructed = generator2(fake.detach())
-            loss = self.criterion_cycle(reconstructed, real)
+        def cycle_loss(real_source, target_generator, source_generator):
+            fake_target = target_generator(real_source)
+            reconstructed_source = source_generator(fake_target)
+            loss = self.criterion_cycle(reconstructed_source, real_source)
+            return loss
+
+        def identity_loss(real_source, target_generator):
+            lambda_idt = 0.1
+            fake_target = target_generator(real_source)
+            loss = self.criterion_idt(fake_target, real_source) * 10 * lambda_idt
             return loss
 
         self.loss_G_A = generator_loss(real_A, self.netG_A, self.netD_A)
         self.loss_G_B = generator_loss(real_B, self.netG_B, self.netD_B)
-        self.loss_cycle_A = cycle_loss(real_A, self.netG_A, self.netG_B)
-        self.loss_cycle_B = cycle_loss(real_B, self.netG_B, self.netG_A)
+        self.loss_cycle_A = cycle_loss(real_A, self.netG_A, self.netG_B) * 10 
+        self.loss_cycle_B = cycle_loss(real_B, self.netG_B, self.netG_A) * 10
+        self.loss_idt_A = identity_loss(real_B, self.netG_A)
+        self.loss_idt_B = identity_loss(real_A, self.netG_B)
 
-        self.loss_G = self.loss_G_A + self.loss_G_B + \
-            self.loss_cycle_A + self.loss_cycle_B
+
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
         self.loss_G.backward()
 
         self.optimizer_G.step()
@@ -74,32 +98,41 @@ class Cyclegan():
         self.set_requires_grad([self.netD_A, self.netD_B], True)
         self.optimizer_D.zero_grad()
 
-        def discriminator_loss(real, generator, discriminator):
-            fake = generator(real)
-            pred_fake = discriminator(fake.detach())
+        def discriminator_loss(real_source, real_target, target_generator, target_discriminator):
+            # discriminator should predict fake_target as False because fake_target is not a real image
+            fake_target = target_generator(real_source)
+            prediction_of_fake_target = target_discriminator(
+                fake_target.detach())
             loss_fake = self.criterion_gan(
-                pred_fake, torch.tensor(0.0).expand_as(pred_fake))
+                prediction_of_fake_target, torch.tensor(0.0).to(self.device).float().expand_as(prediction_of_fake_target))
 
-            pred_real = discriminator(real)
+            # Also, discriminator should predict real_target as True because real_target is a real image
+            prediction_of_real_target = target_discriminator(real_target)
             loss_real = self.criterion_gan(
-                pred_real, torch.tensor(1.0).expand_as(pred_real))
+                prediction_of_real_target, torch.tensor(1.0).to(self.device).float().expand_as(prediction_of_real_target))
 
             loss = loss_fake + loss_real
             return loss
 
         # optimize netD_A
-        self.loss_D_A = discriminator_loss(real_B, self.netG_A, self.netD_A)
+        self.loss_D_A = discriminator_loss(
+            real_A, real_B, self.netG_A, self.netD_A)
         self.loss_D_A.backward()
 
         # optimize netD_B
-        self.loss_D_B = discriminator_loss(real_A, self.netG_B, self.netD_B)
+        self.loss_D_B = discriminator_loss(
+            real_B, real_A, self.netG_B, self.netD_B)
         self.loss_D_B.backward()
 
         self.optimizer_D.step()
 
     def optimize_parameters(self, real_A, real_B):
+        real_A = real_A.to(self.device)
+        real_B = real_B.to(self.device)
         self.__optimize_G(real_A, real_B)
         self.__optimize_D(real_A, real_B)
 
-    def forward(self, real):
-        return self.netG_A(real)
+    def forward(self, real_A, real_B):
+        real_A = real_A.to(self.device)
+        real_B = real_B.to(self.device)
+        return self.netG_A(real_A), self.netG_B(real_B)
