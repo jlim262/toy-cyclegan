@@ -4,16 +4,14 @@ import torch.nn.functional as F
 
 
 def conv(in_channels, out_channels, kernel_size, stride, padding, norm=True):
-    sequence = [nn.Conv2d(in_channels, out_channels,
-                          kernel_size, stride, padding, bias=True)]
+    sequence = [nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=True)]
     if(norm):
         sequence += [(nn.InstanceNorm2d(out_channels))]
     return nn.Sequential(*sequence)
 
 
 def deconv(in_channels, out_channels, kernel_size, stride, padding, output_padding, norm=True):
-    sequence = [nn.ConvTranspose2d(
-        in_channels, out_channels, kernel_size, stride, padding, output_padding, bias=True)]
+    sequence = [nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding, bias=True)]
     if(norm):
         sequence += [(nn.InstanceNorm2d(out_channels))]
     return nn.Sequential(*sequence)
@@ -32,8 +30,8 @@ class ResidualBlock(nn.Module):
     def conv(self, dim, use_dropout):
         sequence = [
             nn.ReflectionPad2d(1),
-            nn.Conv2d(dim, dim, kernel_size=3, padding=0,
-                      bias=True), nn.InstanceNorm2d(dim),
+            nn.Conv2d(dim, dim, kernel_size=3, padding=0, bias=True), 
+            nn.InstanceNorm2d(dim),
             nn.ReLU(True)]
 
         if use_dropout:
@@ -49,6 +47,7 @@ class ResidualBlock(nn.Module):
     def forward(self, x):
         out = x + self.conv_block(x)  # add skip connections
         return out
+
 
 # Discriminator
 class Discriminator(nn.Module):
@@ -68,6 +67,7 @@ class Discriminator(nn.Module):
         out = self.conv5(out)
         return out
 
+
 # Generator
 class Generator(nn.Module):
     def __init__(self, in_channels, out_channels=64, use_dropout=False):
@@ -79,7 +79,7 @@ class Generator(nn.Module):
         self.residuals = residual(out_channels*4, use_dropout, n_blocks=9)
         self.deconv1 = deconv(out_channels*4, out_channels*2, 3, 2, 1, 1)   # upsampling
         self.deconv2 = deconv(out_channels*2, out_channels, 3, 2, 1, 1)     # upsampling
-        self.conv4 = conv(out_channels, 3, 7, 1, 0)                         # conv
+        self.conv4 = conv(out_channels, 3, 7, 1, 0, norm=False)             # conv
 
     def forward(self, x):
         out = self.pad(x)

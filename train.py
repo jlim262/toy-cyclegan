@@ -43,7 +43,8 @@ if __name__ == '__main__':
 
     writer = SummaryWriter()
 
-    for epoch in range(200):
+    for epoch in range(40):
+        print('epoch {}'.format(epoch))
         for i, d in enumerate(dataloader):
             model.optimize_parameters(d['A'], d['B'])
 
@@ -52,6 +53,8 @@ if __name__ == '__main__':
         test_A, test_B = d['A'], d['B']
 
         fake_B, fake_A = model.forward(test_A, test_B)
+        writer.add_image('real_A', np.transpose(tensor2im(test_A), (2, 0, 1)), epoch)
         writer.add_image('fake_B', np.transpose(tensor2im(fake_B), (2, 0, 1)), epoch)
+        writer.add_image('real_B', np.transpose(tensor2im(test_B), (2, 0, 1)), epoch)
         writer.add_image('fake_A', np.transpose(tensor2im(fake_A), (2, 0, 1)), epoch)
         writer.add_scalars('current_loss', dict(model.get_current_losses()), epoch)

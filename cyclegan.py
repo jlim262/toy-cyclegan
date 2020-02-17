@@ -26,9 +26,9 @@ class Cyclegan():
     """
 
     def __init__(self, device):
-        self.device = device
-        self.netG_A = self.__init_weights(Generator(3).to(self.device))
-        self.netG_B = self.__init_weights(Generator(3).to(self.device))
+        self.device = device        
+        self.netG_A = self.__init_weights(Generator(3, use_dropout=False).to(self.device))
+        self.netG_B = self.__init_weights(Generator(3, use_dropout=False).to(self.device))
         self.netD_A = self.__init_weights(Discriminator(3).to(self.device))
         self.netD_B = self.__init_weights(Discriminator(3).to(self.device))
         
@@ -42,7 +42,7 @@ class Cyclegan():
             self.netD_A.parameters(), self.netD_B.parameters()), lr=0.0002, betas=(0.5, 0.999))
         self.optimizers = [self.optimizer_G, self.optimizer_D]
 
-        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'D_B', 'G_B', 'cycle_B']
+        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
 
     def get_current_losses(self):
         errors_ret = OrderedDict()
