@@ -57,13 +57,13 @@ class Discriminator(nn.Module):
         self.conv2 = conv(out_channels, out_channels*2, kernel_size=4, stride=2, padding=1)
         self.conv3 = conv(out_channels*2, out_channels*4, kernel_size=4, stride=2, padding=1)
         self.conv4 = conv(out_channels*4, out_channels*8, kernel_size=4, stride=1, padding=1)
-        self.conv5 = conv(out_channels*8, 1, kernel_size=4, stride=1, padding=1)
+        self.conv5 = conv(out_channels*8, 1, kernel_size=4, stride=1, padding=1, norm=False)
 
     def forward(self, x):
-        out = F.leaky_relu(self.conv1(x), 0.2)      # C64
-        out = F.leaky_relu(self.conv2(out), 0.2)    # C128
-        out = F.leaky_relu(self.conv3(out), 0.2)    # C256
-        out = F.leaky_relu(self.conv4(out), 0.2)    # C512
+        out = F.leaky_relu(self.conv1(x), 0.2, True)      # C64
+        out = F.leaky_relu(self.conv2(out), 0.2, True)    # C128
+        out = F.leaky_relu(self.conv3(out), 0.2, True)    # C256
+        out = F.leaky_relu(self.conv4(out), 0.2, True)    # C512
         out = self.conv5(out)
         return out
 
