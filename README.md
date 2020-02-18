@@ -11,7 +11,9 @@ $ git clone http://github.com/jlim262/toy-cyclegan.git
 $ cd toy-cyclegan
 ```
 
-#### Download dataset 
+#### Prepare your dataset
+In order to translate Bart Simpson to Lisa Simpson, 
+Download Bart Simpson images into ./dataset/bart2lisa/trainA and Lisa Simpson into ./dataset/bart2lisa/trainB
 
 #### Train a model
 ```bash
