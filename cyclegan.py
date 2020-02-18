@@ -45,6 +45,10 @@ class Cyclegan():
 
         self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
 
+        self.lambda_A = 10
+        self.lambda_B = 10
+        self.lambda_idt = 0.5
+
     def get_current_losses(self):
         errors_ret = OrderedDict()
         for name in self.loss_names:
@@ -84,7 +88,7 @@ class Cyclegan():
             fake_target = target_generator(real_source)
             prediction_of_fake_target = target_discriminator(fake_target)
             loss = self.criterion_gan(
-                prediction_of_fake_target, torch.tensor(1.0).to(self.device).float().expand_as(prediction_of_fake_target))
+                prediction_of_fake_target, torch.tensor(1.0).to(self.device).expand_as(prediction_of_fake_target))
             return loss
 
         def cycle_loss(real_source, target_generator, source_generator):
@@ -94,17 +98,16 @@ class Cyclegan():
             return loss
 
         def identity_loss(real_source, target_generator):
-            lambda_idt = 0.5
             fake_target = target_generator(real_source)
-            loss = self.criterion_idt(fake_target, real_source) * 10 * lambda_idt
+            loss = self.criterion_idt(fake_target, real_source)
             return loss
 
         self.loss_G_A = generator_loss(real_A, self.netG_A, self.netD_A)
         self.loss_G_B = generator_loss(real_B, self.netG_B, self.netD_B)
-        self.loss_cycle_A = cycle_loss(real_A, self.netG_A, self.netG_B) * 10 
-        self.loss_cycle_B = cycle_loss(real_B, self.netG_B, self.netG_A) * 10
-        self.loss_idt_A = identity_loss(real_B, self.netG_A)
-        self.loss_idt_B = identity_loss(real_A, self.netG_B)
+        self.loss_cycle_A = cycle_loss(real_A, self.netG_A, self.netG_B) * self.lambda_A 
+        self.loss_cycle_B = cycle_loss(real_B, self.netG_B, self.netG_A) * self.lambda_B
+        self.loss_idt_A = identity_loss(real_B, self.netG_A) * self.lambda_B * self.lambda_idt
+        self.loss_idt_B = identity_loss(real_A, self.netG_B) * self.lambda_A * self.lambda_idt
 
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
         self.loss_G.backward()
@@ -122,12 +125,12 @@ class Cyclegan():
             prediction_of_fake_target = target_discriminator(
                 fake_target.detach())
             loss_fake = self.criterion_gan(
-                prediction_of_fake_target, torch.tensor(0.0).to(self.device).float().expand_as(prediction_of_fake_target))
+                prediction_of_fake_target, torch.tensor(0.0).to(self.device).expand_as(prediction_of_fake_target))
 
             # Also, discriminator should predict real_target as True because real_target is a real image
             prediction_of_real_target = target_discriminator(real_target)
             loss_real = self.criterion_gan(
-                prediction_of_real_target, torch.tensor(1.0).to(self.device).float().expand_as(prediction_of_real_target))
+                prediction_of_real_target, torch.tensor(1.0).to(self.device).expand_as(prediction_of_real_target))
 
             loss = (loss_fake + loss_real) * 0.5
             return loss

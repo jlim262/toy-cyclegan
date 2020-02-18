@@ -6,10 +6,20 @@ import matplotlib.pyplot as plt
 import torch.utils.data as data
 
 from torch.utils.tensorboard import SummaryWriter
+from torchvision.utils import make_grid
 from cyclegan import Cyclegan
 from image_dataset import ImageDataset
 from PIL import Image
-from utils import tensor2im
+
+from utils.util import tensor2im
+
+
+def write_to_tensorboard(writer, real_A, real_B, fake_A, fake_B, losses, step):
+    img_grid_AB = make_grid([real_A.squeeze(0), fake_B.squeeze(0)])
+    img_grid_BA = make_grid([real_B.squeeze(0), fake_A.squeeze(0)])
+    writer.add_image('real_A vs fake_B', np.transpose(tensor2im(img_grid_AB.unsqueeze(0)), (2, 0, 1)), step)
+    writer.add_image('real_B vs fake_A', np.transpose(tensor2im(img_grid_BA.unsqueeze(0)), (2, 0, 1)), step)    
+    writer.add_scalars('current_loss', losses, step)
 
 
 if __name__ == '__main__':
@@ -21,18 +31,13 @@ if __name__ == '__main__':
 
     writer = SummaryWriter()
 
-    for epoch in range(40):
+    for epoch in range(200):
         print('epoch {}'.format(epoch))
         for i, d in enumerate(dataloader):
-            model.optimize_parameters(d['A'], d['B'])
+            real_A, real_B = d['A'], d['B']            
+            model.optimize_parameters(real_A, real_B)
 
-        test_it = iter(dataloader)
-        d = next(test_it)
-        test_A, test_B = d['A'], d['B']
-
-        fake_B, fake_A = model.forward(test_A, test_B)
-        writer.add_image('real_A', np.transpose(tensor2im(test_A), (2, 0, 1)), epoch)
-        writer.add_image('fake_B', np.transpose(tensor2im(fake_B), (2, 0, 1)), epoch)
-        writer.add_image('real_B', np.transpose(tensor2im(test_B), (2, 0, 1)), epoch)
-        writer.add_image('fake_A', np.transpose(tensor2im(fake_A), (2, 0, 1)), epoch)
-        writer.add_scalars('current_loss', dict(model.get_current_losses()), epoch)
+            # visualize results and losses on tensorboard
+            if (i == 0):
+                fake_B, fake_A = model.forward(real_A, real_B)
+                write_to_tensorboard(writer, real_A, real_B, fake_A.detach().cpu(), fake_B.detach().cpu(), dict(model.get_current_losses()), epoch)
