@@ -1,4 +1,5 @@
 
+import os
 import torch
 import torch.nn as nn
 import itertools
@@ -44,10 +45,13 @@ class Cyclegan():
         self.fake_B_pool = ImagePool(50)
 
         self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
+        self.model_names = ['G_A', 'G_B', 'D_A', 'D_B']
 
         self.lambda_A = 10
         self.lambda_B = 10
         self.lambda_idt = 0.5
+
+        self.save_dir = './models'
 
     def get_current_losses(self):
         errors_ret = OrderedDict()
@@ -155,3 +159,16 @@ class Cyclegan():
         real_A = real_A.to(self.device)
         real_B = real_B.to(self.device)
         return self.netG_A(real_A), self.netG_B(real_B)
+
+    def save_networks(self, epoch):    
+        for name in self.model_names:
+            if isinstance(name, str):
+                save_filename = '%s_net_%s.pth' % (epoch, name)
+                save_path = os.path.join(self.save_dir, save_filename)
+                net = getattr(self, 'net' + name)
+
+                if torch.cuda.is_available():
+                    torch.save(net.module.cpu().state_dict(), save_path)
+                    net.to(self.device)
+                else:
+                    torch.save(net.cpu().state_dict(), save_path)        
