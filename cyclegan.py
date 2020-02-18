@@ -7,8 +7,7 @@ from torch.nn import init
 from collections import OrderedDict
 from networks import Generator, Discriminator
 
-
-
+from utils.image_pool import ImagePool
 
 class Cyclegan():
     """
@@ -22,7 +21,6 @@ class Cyclegan():
     Descriminators:
         self.netD_A: discriminates between fake_B and real_B
         self.netD_B: discriminates between fake_A and real_A
-
     """
 
     def __init__(self, device):
@@ -41,6 +39,9 @@ class Cyclegan():
         self.optimizer_D = torch.optim.Adam(itertools.chain(
             self.netD_A.parameters(), self.netD_B.parameters()), lr=0.0002, betas=(0.5, 0.999))
         self.optimizers = [self.optimizer_G, self.optimizer_D]
+
+        self.fake_A_pool = ImagePool(50)
+        self.fake_B_pool = ImagePool(50)
 
         self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
 
@@ -105,7 +106,6 @@ class Cyclegan():
         self.loss_idt_A = identity_loss(real_B, self.netG_A)
         self.loss_idt_B = identity_loss(real_A, self.netG_B)
 
-
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
         self.loss_G.backward()
 
@@ -115,9 +115,10 @@ class Cyclegan():
         self.set_requires_grad([self.netD_A, self.netD_B], True)
         self.optimizer_D.zero_grad()
 
-        def discriminator_loss(real_source, real_target, target_generator, target_discriminator):
+        def discriminator_loss(real_source, real_target, fake_target_pool, target_generator, target_discriminator):
             # discriminator should predict fake_target as False because fake_target is not a real image
             fake_target = target_generator(real_source)
+            fake_target = fake_target_pool.query(fake_target)
             prediction_of_fake_target = target_discriminator(
                 fake_target.detach())
             loss_fake = self.criterion_gan(
@@ -132,13 +133,11 @@ class Cyclegan():
             return loss
 
         # optimize netD_A
-        self.loss_D_A = discriminator_loss(
-            real_A, real_B, self.netG_A, self.netD_A)
+        self.loss_D_A = discriminator_loss(real_A, real_B, self.fake_B_pool, self.netG_A, self.netD_A)
         self.loss_D_A.backward()
 
         # optimize netD_B
-        self.loss_D_B = discriminator_loss(
-            real_B, real_A, self.netG_B, self.netD_B)
+        self.loss_D_B = discriminator_loss(real_B, real_A, self.fake_A_pool, self.netG_B, self.netD_B)
         self.loss_D_B.backward()
 
         self.optimizer_D.step()

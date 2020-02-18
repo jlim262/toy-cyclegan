@@ -32,7 +32,7 @@ def get_transform():
     transform_list = [
         transforms.Resize([286, 286], Image.BICUBIC),
         transforms.RandomCrop(256),
-        # transforms.RandomHorizontalFlip(),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
 
@@ -56,6 +56,7 @@ class ImageDataset(data.Dataset):
         B_path = self.B_paths[index_B]
         A_img = Image.open(A_path).convert('RGB')
         B_img = Image.open(B_path).convert('RGB')
+        
         # apply image transformation
         A = self.transform(A_img)
         B = self.transform(B_img)
