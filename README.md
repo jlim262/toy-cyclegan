@@ -1,5 +1,5 @@
 # toy-cyclegan
-Simplified PyTorch implementation of [cycleGAN](https://arxiv.org/abs/1703.10593) based on [the official implementaton](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
+Simplified PyTorch implementation of [CycleGAN](https://arxiv.org/abs/1703.10593) based on [the official implementaton](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
 
 <br>
 
