@@ -9,6 +9,7 @@ from collections import OrderedDict
 from networks import Generator, Discriminator
 
 from utils.image_pool import ImagePool
+from utils.util import mkdirs
 
 class Cyclegan():
     """
@@ -161,14 +162,31 @@ class Cyclegan():
         return self.netG_A(real_A), self.netG_B(real_B)
 
     def save_networks(self, epoch):    
+        mkdirs(self.save_dir)
         for name in self.model_names:
             if isinstance(name, str):
                 save_filename = '%s_net_%s.pth' % (epoch, name)
                 save_path = os.path.join(self.save_dir, save_filename)
+
                 net = getattr(self, 'net' + name)
 
                 if torch.cuda.is_available():
-                    torch.save(net.module.cpu().state_dict(), save_path)
+                    torch.save(net.cpu().state_dict(), save_path)
                     net.to(self.device)
                 else:
                     torch.save(net.cpu().state_dict(), save_path)        
+    
+    def load_networks(self, epoch):    
+        for name in self.model_names:
+            if isinstance(name, str):
+                load_filename = '%s_net_%s.pth' % (epoch, name)
+                load_path = os.path.join(self.save_dir, load_filename)
+                net = getattr(self, 'net' + name)
+
+                print('loading the model from %s' % load_path)
+
+                state_dict = torch.load(load_path, map_location=self.device)
+                if hasattr(state_dict, '_metadata'):
+                    del state_dict._metadata
+
+                net.load_state_dict(state_dict)

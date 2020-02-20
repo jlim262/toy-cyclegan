@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     writer = SummaryWriter()
 
-    for epoch in range(200):
+    for epoch in range(400):
         print('epoch {}'.format(epoch))
         for i, d in enumerate(dataloader):
             real_A, real_B = d['A'], d['B']            
@@ -41,3 +41,6 @@ if __name__ == '__main__':
             if (i == 0):
                 fake_B, fake_A = model.forward(real_A, real_B)
                 write_to_tensorboard(writer, real_A, real_B, fake_A.detach().cpu(), fake_B.detach().cpu(), dict(model.get_current_losses()), epoch)
+        
+        if ((epoch % 50) == 0):
+            model.save_networks(epoch)
